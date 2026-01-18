@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, precision_score, recall_score, f1_score
@@ -86,14 +88,29 @@ def train_model(df):
     return clf, score, features, X_test, y_test
 
 def plot_feature_importance(clf, feature_names):
-    """Display a bar chart of feature importances."""
+    """Display a horizontal bar chart of feature importances using matplotlib."""
     importances = clf.feature_importances_
     importance_df = pd.DataFrame({
         'Feature': feature_names,
         'Importance': importances
     }).sort_values('Importance', ascending=True)
     
-    st.bar_chart(importance_df.set_index('Feature'))
+    # Create matplotlib horizontal bar chart
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors = sns.color_palette('viridis', len(importance_df))
+    bars = ax.barh(importance_df['Feature'], importance_df['Importance'], color=colors)
+    
+    # Add value labels on bars
+    for bar, val in zip(bars, importance_df['Importance']):
+        ax.text(bar.get_width() + 0.005, bar.get_y() + bar.get_height()/2, 
+                f'{val:.3f}', va='center', fontsize=10)
+    
+    ax.set_xlabel('Importance Score', fontsize=12)
+    ax.set_title('Feature Importance (Random Forest)', fontsize=14, fontweight='bold')
+    ax.set_xlim(0, max(importances) * 1.15)  # Add space for labels
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
 
 def plot_confusion_matrix(y_true, y_pred, labels):
     """Display a confusion matrix heatmap with detailed metrics."""
@@ -103,8 +120,17 @@ def plot_confusion_matrix(y_true, y_pred, labels):
     cm = confusion_matrix(y_true, y_pred, labels=labels)
     cm_df = pd.DataFrame(cm, index=labels, columns=labels)
     
+    # Create matplotlib heatmap
     st.write("**Confusion Matrix:**")
-    st.dataframe(cm_df.style.background_gradient(cmap='Blues'), use_container_width=True)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(cm_df, annot=True, fmt='d', cmap='Blues', ax=ax, 
+                cbar_kws={'label': 'Count'}, linewidths=0.5)
+    ax.set_xlabel('Predicted Label', fontsize=12)
+    ax.set_ylabel('True Label', fontsize=12)
+    ax.set_title('Confusion Matrix Heatmap', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
     
     # Calculate overall metrics
     accuracy = accuracy_score(y_true, y_pred)

@@ -5,3 +5,4 @@ scikit-learn
 groq
 joblib
 matplotlib
+seaborn
