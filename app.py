@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, precision_score, recall_score, f1_score
 from groq import Groq
 import os
 import joblib
@@ -96,17 +96,48 @@ def plot_feature_importance(clf, feature_names):
     st.bar_chart(importance_df.set_index('Feature'))
 
 def plot_confusion_matrix(y_true, y_pred, labels):
-    """Display a confusion matrix heatmap."""
+    """Display a confusion matrix heatmap with detailed metrics."""
+    # Sort labels for consistent display (BENIGN first if present)
+    labels = sorted(labels, key=lambda x: (0 if x == "BENIGN" else 1, x))
+    
     cm = confusion_matrix(y_true, y_pred, labels=labels)
     cm_df = pd.DataFrame(cm, index=labels, columns=labels)
     
     st.write("**Confusion Matrix:**")
     st.dataframe(cm_df.style.background_gradient(cmap='Blues'), use_container_width=True)
     
-    # Calculate and display metrics
-    total = cm.sum()
-    correct = np.trace(cm)
-    st.caption(f"✅ Correct Predictions: {correct}/{total} ({correct/total:.1%})")
+    # Calculate overall metrics
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
+    recall = recall_score(y_true, y_pred, average='weighted', zero_division=0)
+    f1 = f1_score(y_true, y_pred, average='weighted', zero_division=0)
+    
+    # Display metrics in columns
+    st.write("**Overall Metrics:**")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Accuracy", f"{accuracy:.2%}")
+    m2.metric("Precision", f"{precision:.2%}")
+    m3.metric("Recall", f"{recall:.2%}")
+    m4.metric("F1-Score", f"{f1:.2%}")
+    
+    # Per-class metrics
+    st.write("**Per-Class Performance:**")
+    report = classification_report(y_true, y_pred, labels=labels, output_dict=True, zero_division=0)
+    
+    # Build a clean dataframe for per-class metrics
+    per_class_data = []
+    for label in labels:
+        if label in report:
+            per_class_data.append({
+                'Class': label,
+                'Precision': f"{report[label]['precision']:.2%}",
+                'Recall': f"{report[label]['recall']:.2%}",
+                'F1-Score': f"{report[label]['f1-score']:.2%}",
+                'Support': int(report[label]['support'])
+            })
+    
+    per_class_df = pd.DataFrame(per_class_data)
+    st.dataframe(per_class_df, use_container_width=True, hide_index=True)
 
 # --- APP LOGIC ---
 df = load_data(DATA_FILE)
